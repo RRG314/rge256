@@ -125,8 +125,6 @@ examples/
 README.md
 CREDITS.md
 LICENSE
-setup.py
-pyproject.toml
 ```
 
 ---
