@@ -9,36 +9,32 @@ Alexey L. Voskov
 GitHub: https://github.com/alvoskov  
 SmokeRand: https://github.com/alvoskov/SmokeRand
 
-Voskov independently reimplemented the RGE256Lite algorithm in C for integration with the SmokeRand testing framework. His results apply specifically to the RGE256Lite variant and not to the entire suite.
+# Credits
 
-Completed external testing of RGE256Lite included:
-- SmokeRand express battery  
-- SmokeRand brief battery  
-- SmokeRand default battery  
-- SmokeRand full battery  
-- TestU01 SmallCrush  
-- TestU01 Crush  
-- TestU01 BigCrush  
-- PractRand testing to at least 1 TiB of input  
-- Performance measurement of approximately 400 MiB per second in his C implementation
+## Primary author
 
-He also generated several experimental variants inspired by RGE256 using modified round counts, rotation constants, cross coupling patterns, and counter based constructions. These included:
-- RGE256ex  
-- RGE512ex  
-- RGE256ex ctr  
-- RGE512ex ctr  
+Steven Reid  
+Designer of the original RGE256 algorithm and author of the Python implementations in this repository, including the Lite, LiteSafe, ex, 512ex, and ctr variants, along with the internal statistical test scripts.
 
-Voskov conducted partial statistical exploration of these experimental variants inside SmokeRand and reported that early results were promising. Full TestU01 and PractRand coverage for these variants was still in progress at the time of his review.
+## External feedback and testing
 
-Additional contributions from Voskov include:
-- rotation constant recommendations  
-- cross lane mixing suggestions  
-- analysis of possible bad states  
-- recommendations for safe seeding  
-- advice on counter based structures  
-- structural comparisons with ChaCha style ARX mixers  
+An independent reviewer and author of the SmokeRand framework (https://github.com/alvoskov/SmokeRand) implemented the RGE256-Lite variant in C as `rge256lite.c` and integrated it into SmokeRand.
 
-All C code written by Voskov remains MIT licensed and credited in accordance with the original repositories.
+Based on the comment header and discussion, this C implementation of RGE256-Lite was reported to have passed:
+
+- SmokeRand express, brief, default, and full batteries  
+- TestU01 SmallCrush, Crush, and BigCrush  
+- PractRand testing to at least 1 TiB of output  
+
+The reviewer also identified two important drawbacks of the RGE256-Lite design:
+
+- It is relatively slow compared to other non-cryptographic generators  
+- It has no guaranteed minimal period and can have bad seeds
+
+In addition, the reviewer experimented with several related designs, including RGE256ex, RGE512ex, RGE256ex-ctr, and RGE512ex-ctr, and reported that early statistical tests for these were promising, with full testing still in progress at the time of the comments.
+
+This project acknowledges that feedback, incorporates the bad-seed warning into the documentation for the Lite variant, and introduces new variants (such as RGE256-Lite-Safe and RGE256ctr) specifically to address the period and seed-safety concerns.
+
 
 ## Additional Acknowledgments
 Thanks to the open source PRNG research community for providing tools including TestU01, PractRand, Dieharder, and SmokeRand. These tools made independent validation possible.
