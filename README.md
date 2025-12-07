@@ -112,6 +112,10 @@ print(values)
 ## 5. Project Structure
 
 ```
+c/
+    Makefile
+    rge256_ctr.c
+    rge256_ctr.h
 rge256/
     __init__.py
     rge256_lite.py
@@ -121,6 +125,7 @@ rge256/
     rge256_ctr.py
     utils.py
 tests/
+    RGE256.ipynb
 examples/
 README.md
 CREDITS.md
