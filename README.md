@@ -120,6 +120,7 @@ rge256/
     __init__.py
     rge256_lite.py
     rge256_safe.py
+    librge256ctr.so
     rge256_ex.py
     rge512_ex.py
     rge256_ctr.py
