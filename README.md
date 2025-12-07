@@ -1,4 +1,4 @@
-# **README.md (Final Version)**
+# **README.md**
 
 ````
 # RGE256: ARX-Based Pseudorandom Number Generator Suite
