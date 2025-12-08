@@ -35,6 +35,16 @@ In addition, the reviewer experimented with several related designs, including R
 
 This project acknowledges that feedback, incorporates the bad-seed warning into the documentation for the Lite variant, and introduces new variants (such as RGE256-Lite-Safe and RGE256ctr) specifically to address the period and seed-safety concerns.
 
+## AI Assistance Acknowledgment
+
+The implementations in this repository were developed with the assistance of 
+AI tools, which were used to translate algorithmic designs, specifications, and 
+variant structures into working source code. All generator architectures, 
+variant definitions, mixing strategies, design choices, and testing methodology 
+were created, directed, and validated by Steven Reid. AI assistance was used in 
+a supportive role for code generation and documentation, not for conceptual or 
+algorithmic creation.
+
 
 ## Additional Acknowledgments
 Thanks to the open source PRNG research community for providing tools including TestU01, PractRand, Dieharder, and SmokeRand. These tools made independent validation possible.
