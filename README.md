@@ -1,133 +1,181 @@
-# **README.md**
-
-````
 # RGE256: ARX-Based Pseudorandom Number Generator Suite
 
-RGE256 is a family of ARX-based pseudorandom number generators. The suite contains multiple variants built around a 256-bit or 512-bit internal state, each designed with different mixing strengths, safety properties, and performance characteristics. The generators use 32 bit add-rotate-xor operations and recursive geometric mixing rules.
+RGE256 is a family of ARX-based pseudorandom number generators built around 256-bit and 512-bit internal states. Each variant applies 32-bit add–rotate–xor (ARX) transformations and recursive geometric mixing rules to produce deterministic, uniform, and statistically stable output streams.
 
-The RGE256 suite is intended for simulation, machine learning pipelines, Monte Carlo workloads, data generation, and general purpose high quality noncryptographic randomness. These generators are not designed for cryptographic security and are not intended for adversarial settings.
+The RGE256 suite is intended for:
 
-This repository contains the following implementations:
+- numerical simulation  
+- Monte Carlo workloads  
+- machine learning data generation  
+- tensor initialization  
+- general-purpose high-quality noncryptographic randomness  
 
-- RGE256Lite  
-- RGE256LiteSafe  
-- RGE256ex  
-- RGE512ex  
-- RGE256ctr
+These generators are **not** designed for use in adversarial or cryptographic environments.
 
-The RGE256ctr variant is the recommended default generator. It uses a counter based structure similar to reduced round ChaCha and is suitable for parallel use and tensor generation.
+The repository contains the following implementations:
 
-All variants are implemented in pure Python with NumPy and share a common utility module.
+- **RGE256Lite**  
+- **RGE256LiteSafe**  
+- **RGE256ex**  
+- **RGE512ex**  
+- **RGE256ctr** (recommended default)  
+- **C-accelerated RGE256ctr** (`librge256ctr.so`)
+
+All Python variants depend only on NumPy. The counter-mode C implementation includes a Python wrapper for high-throughput generation.
 
 ---
 
 ## 1. Variants Overview
 
-### RGE256Lite
-This is the original 256 bit ARX core. It uses three update rounds and simple cross lane diffusion. It passes statistical tests but can enter undesirable states under certain seeds. It is provided for reproducibility of the original design.
+### **RGE256Lite**
+Original 256-bit ARX core using three rounds of updates and simple cross-lane diffusion.  
+It passes basic statistical tests but can enter weak states under certain initial seeds.  
+Retained for historical and reproducibility purposes.
 
-### RGE256LiteSafe
-This variant adds a 64 bit counter to the RGE256Lite core. The counter ensures that no initial seed produces a trapped state and guarantees a minimum period of 2^64. This version is simple, stable, and suitable for most applications requiring predictable behavior.
+### **RGE256LiteSafe**
+RGE256Lite with an added 64-bit counter.  
+This eliminates bad seeds and guarantees a minimum period of **2⁶⁴**.  
+Simple, stable, and suitable for deterministic workloads.
 
-### RGE256ex
-This version uses two rounds of heavy ARX mixing with large rotation constants and avalanche tuned addition constants. It provides stronger diffusion than the Lite variants but does not use a counter. It shows good uniformity and very stable output statistics.
+### **RGE256ex**
+Heavier ARX mixing using multiple rotation constants and tuned additive constants.  
+Provides stronger diffusion and stable statistical behavior.  
+Does not use a counter.
 
-### RGE512ex
-This is a 512 bit state version composed of sixteen 32 bit words and two ARX layers per round. It has strong avalanche behavior and very uniform output. It is the strongest diffuser in the suite and is intended for long running simulations that benefit from a larger internal state.
+### **RGE512ex**
+A 512-bit state (sixteen 32-bit words) with two ARX layers per round.  
+Strongest avalanche behavior and most uniform statistical profile.  
+Intended for long-running simulations that benefit from a larger internal state.
 
-### RGE256ctr
-This is a counter based generator inspired by the ChaCha quarter round structure. It uses six ARX rounds, a 64 bit counter, and feedforward. This variant is easy to parallelize and produces output with very low serial correlation. It is the recommended default generator for new applications.
+### **RGE256ctr**
+Counter-mode generator inspired by reduced-round ChaCha quarter-round flow.  
+Uses six ARX rounds, a 64-bit counter, and feedforward output.  
+Easy to parallelize and suitable for tensor and array generation.  
+This is the **recommended default generator**.
 
 ---
 
 ## 2. Statistical Results
 
-All results below were produced using the NumPy versions included in this repository. Tests include entropy estimation, chi square uniformity, lag 1 serial correlation, bit frequency analysis, and short cycle detection.
+All results were produced using the NumPy implementations in this repository.  
+Tests include entropy estimation, chi-square uniformity, lag-1 serial correlation, bit balance, and short cycle detection.
 
-### RGE256Lite
-- Entropy: approximately 17.60 bits  
-- Chi square: approximately 231  
+### **RGE256Lite**
+- Entropy: ~17.60 bits  
+- Chi-square: ~231  
 - Serial correlation: 0.00236  
 - Bit frequency: 0.49950  
-- Cycle detection: no cycles detected in short runs  
+- Cycle detection: none observed in short runs  
 
-### RGE256LiteSafe
-- Entropy: approximately 17.60 bits  
-- Chi square: approximately 312  
+### **RGE256LiteSafe**
+- Entropy: ~17.60 bits  
+- Chi-square: ~312  
 - Serial correlation: 0.00138  
 - Bit frequency: 0.49978  
-- Cycle detection: no cycles detected  
+- Cycle detection: none observed  
 
-### RGE256ex
-- Entropy: approximately 17.60 bits  
-- Chi square: approximately 240  
+### **RGE256ex**
+- Entropy: ~17.60 bits  
+- Chi-square: ~240  
 - Serial correlation: 0.00145  
 - Bit frequency: 0.49990  
-- Cycle detection: no cycles detected  
+- Cycle detection: none observed  
 
-### RGE512ex
+### **RGE512ex**
 - Entropy: 18.19 bits  
-- Chi square: 269.46  
-- Serial correlation: approximately   0.00110 (negative)  
+- Chi-square: 269.46  
+- Serial correlation: −0.00110  
 - Bit frequency: 0.49979  
-- Cycle detection: no cycles detected in 2 million steps  
+- Cycle detection: none observed in 2M steps  
 
-### RGE256ctr
-- Entropy: approximately 17.60 bits  
-- Chi square: approximately 218  
+### **RGE256ctr**
+- Entropy: ~17.60 bits  
+- Chi-square: ~218  
 - Serial correlation: 0.000099  
 - Bit frequency: 0.50007  
-- Cycle detection: no cycles detected  
+- Cycle detection: none observed  
 
-These results indicate that all variants produce stable and uniform distributions with no detected structural failures. The RGE256ctr variant shows the lowest serial correlation. RGE512ex shows the strongest avalanche behavior and the most uniform statistical profile.
+RGE256ctr shows the lowest serial correlation.  
+RGE512ex shows the strongest diffusion and most uniform overall statistics.
 
 ---
 
 ## 3. External Independent Testing
 
-Alexey L. Voskov independently reimplemented the original RGE256Lite variant in C for use within the SmokeRand testing framework. His results apply specifically to the Lite variant and not to the entire suite.
+Independent testing of **RGE256Lite** was performed by **Alexey L. Voskov** using the SmokeRand framework. His findings apply specifically to the Lite variant and not the entire suite.
 
-His testing reported the following:
+Verified test results include:
 
-- SmokeRand express, brief, default, and full batteries passed  
-- TestU01 SmallCrush, Crush, and BigCrush passed  
-- PractRand testing passed to at least 1 TiB of input  
+- SmokeRand express, brief, default, and full batteries  
+- TestU01 SmallCrush, Crush, and BigCrush  
+- PractRand testing to at least **1 TiB**
 
-Voskov also created experimental variants based on RGE256 with modified rotation schemes and heavier mixing. Statistical testing of those versions was reported as ongoing at the time of his comments.
+Voskov also constructed experimental ARX variants (RGE256ex and RGE512ex-style designs) with heavier mixing and improved rotation constants. His feedback led directly to the development of safer and more robust counter-mode versions such as **RGE256LiteSafe** and **RGE256ctr**.
+
+Full credit is given in the **Credits** section.
 
 ---
 
-## 4. Python Usage
+## 4. Benchmark Results
+
+Comprehensive benchmarks compare:
+
+- All RGE256 variants  
+- C-accelerated RGE256ctr  
+- PCG64  
+- Philox  
+- Xoshiro256++  
+- ChaCha8  
+- ChaCha12  
+- NumPy array fill  
+- PyTorch tensor fill  
+- Bulk stream throughput  
+
+### **Benchmark tables will be inserted here once generated.**
+
+---
+
+## 5. Python Usage
 
 ```python
-from rge256 import RGE256ctr
+from rge256.rge256_ctr import RGE256ctr
 
 g = RGE256ctr(seed=12345)
 values = [g.next32() for _ in range(16)]
 print(values)
-````
+```
+
+### C-accelerated usage:
+```python
+from rge256.rge256ctr_wrapper import RGE256ctr_C
+
+g = RGE256ctr_C(seed=12345)
+print(g.next32())
+```
 
 ---
 
-## 5. Project Structure
+## 6. Project Structure
 
 ```
 c/
     Makefile
-    rge256_ctr.c
-    rge256_ctr.h
+    rge256ctr.c
+    rge256ctr.h
 rge256/
     __init__.py
+    librge256ctr.so
     rge256_lite.py
     rge256_safe.py
-    librge256ctr.so
     rge256_ex.py
     rge512_ex.py
     rge256_ctr.py
+    rge256ctr_wrapper.py
     utils.py
 tests/
-    RGE256.ipynb
-examples/
+    test_cycle.py
+    test_imports.py
+    test_small_stats.py
 README.md
 CREDITS.md
 LICENSE
@@ -135,28 +183,50 @@ LICENSE
 
 ---
 
-## 6. License
+## 7. PyTorch Integration
 
-This project is released under the MIT License.
-All code in this repository is available for academic and industrial use under the terms of the license.
+RGE256ctr is structured similarly to reduced-round ChaCha and is compatible with PyTorch’s counter-mode RNG paradigm.  
+A minimal integration would require:
+
+- A `GeneratorImpl` subclass  
+- State serialization  
+- CPU kernel registration  
+- Optional CUDA kernel extension  
+- Integration into `torch.Generator` selection mechanisms  
+
+A full proposal can be provided if required.
 
 ---
 
-## 7. Citation
+## 8. License
 
-If you use RGE256 in academic or applied work, please cite:
-
-Reid, S. (2025). RGE-256: ARX Based Pseudorandom Number Generator With Structured Entropy and Empirical Validation. Zenodo.
-DOI: [https://doi.org/10.5281/zenodo.17713219](https://doi.org/10.5281/zenodo.17713219)
+This project is released under the **MIT License**.  
+All code is available for academic and industrial use.
 
 ---
 
-## 8. Credits
+## 9. Citation
 
-Primary author: Steven Reid
-Independent C testing and analysis of RGE256Lite: Alexey L. Voskov
-Rotation constants, mixing suggestions, and state safety insights were contributed through his open source review.
+If you use this work, please cite:
 
-```
+**Reid, S. (2025). RGE-256: ARX-Based Pseudorandom Number Generator With Structured Entropy and Empirical Validation. Zenodo.**  
+DOI: https://doi.org/10.5281/zenodo.17713219
 
+---
+
+## 10. Credits
+
+**Primary author:** Steven Reid  
+Independent Researcher  
+
+**Independent C testing and analysis:**  
+**Alexey L. Voskov**  
+- SmokeRand testing  
+- TestU01 and PractRand validation  
+- Analysis of rotation constants  
+- Detection of seed weaknesses  
+- Recommendations for counter-mode designs  
+- Inspiration for RGE256ex and RGE512ex structures  
+
+His contributions improved the safety, structure, and statistical robustness of the current RGE256 suite.
 
