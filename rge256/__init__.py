@@ -10,7 +10,7 @@ from .rge256ctr_wrapper import RGE256ctr_C
 # Expose Python implementations
 from .rge256_ctr import RGE256ctr
 from .rge256_lite import RGE256Lite
-from .rge256_safe import RGE256LiteSAFE
+from .rge256_safe import RGE256LiteSafe
 from .rge256_ex import RGE256ex
 from .rge512_ex import RGE512ex
 
@@ -18,7 +18,7 @@ __all__ = [
     "RGE256ctr_C",
     "RGE256ctr",
     "RGE256Lite",
-    "RGE256LiteSAFE",
+    "RGE256LiteSafe",
     "RGE256ex",
     "RGE512ex",
 ]
