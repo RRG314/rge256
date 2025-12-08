@@ -108,7 +108,7 @@ and is summarized in the following section.
 ## 3. External Review and Improvements
 
 Independent analysis of the original RGE256Lite variant was performed by
-**A.L.Voskov** using the SmokeRand testing framework. His review identified
+**Alexey L. Voskov** using the SmokeRand testing framework. His review identified
 two limitations that applied specifically to the original Lite design:
 
 1. The generator produced only one 32-bit output per 8-word state, which limited
@@ -255,16 +255,110 @@ LICENSE
 
 ## 7. PyTorch Integration 
 
-RGE256ctr is structured similarly to reduced-round ChaCha and is compatible with PyTorch’s counter-mode RNG paradigm.  
-A minimal integration would require:
+## Why RGE256ctr Should Be Added to PyTorch
 
-- A `GeneratorImpl` subclass  
-- State serialization  
-- CPU kernel registration  
-- Optional CUDA kernel extension  
-- Integration into `torch.Generator` selection mechanisms  
+PyTorch currently provides two RNGs:
 
-A full proposal can be provided if required.
+- **Philox** – fast counter-mode PRNG  
+- **ChaCha** – cryptographically secure PRNG  
+
+RGE256ctr fills the gap between them:
+
+### 1. A Middle-Ground ARX Generator
+RGE256ctr is faster than Xoshiro256++ in Python, competitive with Philox in C,
+and lighter than ChaCha. It provides a clean ARX structure with stronger
+diffusion than simple LCGs or xoroshiro-type generators.
+
+### 2. Strong Empirical Validation
+The underlying RGE256 core (Lite variant) has been independently validated:
+
+- TestU01 SmallCrush  
+- TestU01 Crush  
+- TestU01 BigCrush  
+- PractRand ≥ **1 TiB**  
+- Full SmokeRand express/brief/default/full
+
+This level of external validation is rare for new RNG proposals.
+
+### 3. Clean Academic Attribution
+The generator has:
+
+- A DOI  
+- A public preprint  
+- Documented design rationale  
+- Benchmark results  
+- Full transparency and AI-assistance disclosure  
+
+
+### 4. Direct Benefit to PyTorch Users
+RGE256ctr is well-suited for:
+
+- Monte Carlo simulation  
+- training reproducibility  
+- diffusion models  
+- data augmentation  
+- tensor initialization  
+- high-parallel GPU workloads  
+
+### 5. Simple Integration Path
+RGE256ctr:
+
+- is counter-based  
+- is fully deterministic  
+- has serializable fixed-size state  
+- uses a portable C reference design  
+- matches PyTorch’s RNG abstraction layer  
+
+This greatly simplifies upstream integration.
+
+## PyTorch Compatibility Summary
+
+RGE256ctr is compatible with PyTorch’s RNG architecture and can be mapped cleanly
+to the `GeneratorImpl` backend for both CPU and CUDA. The generator satisfies all
+requirements for determinism, reproducibility, state serialization, and
+parallel counter-mode execution.
+
+### Key Compatibility Properties
+
+- **Counter-Mode Design**  
+  RGE256ctr uses a 64-bit counter with a fixed 256-bit key. This matches PyTorch’s
+  preferred architecture (Philox, ChaCha).
+
+- **Stateless Advancing**  
+  Output is a deterministic function of `(key, counter)`, allowing per-thread
+  and per-block parallelization with no synchronization.
+
+- **Serializable State**  
+  The internal state is only 320 bits (256-bit key + 64-bit counter), which fits
+  easily into PyTorch’s RNG state tensor.
+
+- **Parallel Execution**  
+  Counter ranges can be distributed across CPU threads or CUDA blocks, mirroring
+  Philox’s design.
+
+- **Deterministic Cross-Platform Behavior**  
+  The C reference implementation ensures bit-identical output on all platforms.
+
+### Why PyTorch Can Integrate RGE256ctr Easily
+
+PyTorch already ships with two counter-mode ARX RNGs (Philox, ChaCha).  
+RGE256ctr follows the same architectural pattern:
+
+```
+new_state = ARX_rounds(key, counter)
+output    = new_state[0]
+counter  += 1
+```
+
+This means:
+
+- No new abstraction layers
+- No redesign of RNG plumbing
+- Uses existing `GeneratorImpl` interfaces
+- Compatible with PyTorch’s state management
+- Clear path to CUDA kernels
+
+RGE256ctr drops directly into the existing RNG backend with minimal changes.
 
 ---
 
