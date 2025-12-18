@@ -10,7 +10,7 @@ The RGE256 suite is intended for:
 - tensor initialization  
 - general-purpose high-quality noncryptographic randomness  
 
-These generators are **not** designed for use in adversarial or cryptographic environments and have not been externally validated.
+These generators are **not** designed for use in adversarial or cryptographic environments.
 
 The repository contains the following implementations:
 
@@ -120,7 +120,7 @@ Results shown as Passed/Weak/Failed:
 | RGE256LiteSafe | 17/0/0 | 31/1/0 | 11/1/0 | 33/0/0 | 6/0/0 | 112/2/0 |
 | RGE256ctr | 17/0/0 | 32/0/0 | 12/0/0 | 32/1/0 | 5/1/0 | 112/2/0 |
 | RGE256ex | 17/0/0 | 32/0/0 | 11/1/0 | 31/2/0 | 6/0/0 | 111/3/0 |
-| RGE512ex | — | — | — | — | — | — |
+| RGE512ex | 16/1/0 | 31/1/0 | 12/0/0 | 32/1/0 | 6/0/0 | 110/4/0 |
 
 ### SmokeRand Results
 
@@ -303,7 +303,7 @@ RGE256ctr is faster than Xoshiro256++ in Python, competitive with Philox in C,
 and lighter than ChaCha. It provides a clean ARX structure with stronger
 diffusion than simple LCGs or xoroshiro-type generators.
 
-#### 2. Strong Empirical Validation
+#### 2. Empirical Validation
 The underlying RGE256 core (Lite variant) has been independently validated:
 
 - TestU01 SmallCrush  
@@ -315,7 +315,7 @@ The underlying RGE256 core (Lite variant) has been independently validated:
 
 This level of external validation is rare for new RNG proposals.
 
-#### 3. Clean Academic Attribution
+#### 3. Academic Attribution
 The generator has:
 
 - A DOI  
@@ -459,7 +459,7 @@ All generators in this repository are original implementations by Steven Reid, e
 
 ### Attribution Notice
 
-This project is maintained in good faith with the intent to properly credit all contributors. If any reference, acknowledgement, or attribution is missing or incomplete, this is an unintentional oversight on my part—not an attempt to claim credit for others' work. If you believe your contribution has not been properly acknowledged, please open an issue or contact me directly, and I will promptly update this section.
+This project is maintained in good faith with the intent to properly credit all contributors. If any reference, acknowledgement, or attribution is missing or incomplete, this is an unintentional oversight on my part, not an attempt to claim credit for others' work. If you believe your contribution has not been properly acknowledged, please open an issue or contact me directly, and I will promptly update this section.
 
 ---
 
