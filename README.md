@@ -18,8 +18,8 @@ The repository contains the following implementations:
 - **RGE256LiteSafe**  
 - **RGE256ex**  
 - **RGE512ex**  
-- **RGE256ctr** (recommended default)  
-- **C-accelerated RGE256ctr** (`librge256ctr.so`)
+- **RGE256ctr**   
+- **C-accelerated RGE256ctr** 
 
 All Python variants depend only on NumPy. The counter-mode C implementation includes a Python wrapper for high-throughput generation.
 
@@ -40,18 +40,21 @@ Simple, stable, and suitable for deterministic workloads.
 ### **RGE256ex**
 Heavier ARX mixing using multiple rotation constants and tuned additive constants.  
 Provides stronger diffusion and stable statistical behavior.  
-Does not use a counter.
+Includes 64-bit counter for guaranteed minimum period of 2⁶⁴.  
+**Algorithm design by Alexey L. Voskov** based on the original RGE256 concept.
 
 ### **RGE512ex**
 A 512-bit state (eight 64-bit words) with counter injection and cross-lane mixing.  
 Strongest avalanche behavior and most uniform statistical profile.  
-Intended for long-running simulations that benefit from a larger internal state.
+Intended for long-running simulations that benefit from a larger internal state.  
+**Algorithm design by Alexey L. Voskov** based on the original RGE256 concept.
 
 ### **RGE256ctr**
 Counter-mode generator inspired by reduced-round ChaCha quarter-round flow.  
 Uses six ARX rounds, a 64-bit counter, and feedforward output.  
 Easy to parallelize and suitable for tensor and array generation.  
-This is the **recommended default generator**.
+This is the **recommended default generator**.  
+**Counter-mode architecture by Alexey L. Voskov**.
 
 ---
 
@@ -287,136 +290,60 @@ LICENSE
 
 ---
 
-## 9. PyTorch Integration 
-
-### Why RGE256ctr Should Be Added to PyTorch
-
-PyTorch currently provides two RNGs:
-
-- **Philox** – fast counter-mode PRNG  
-- **ChaCha** – cryptographically secure PRNG  
-
-RGE256ctr fills the gap between them:
-
-#### 1. A Middle-Ground ARX Generator
-RGE256ctr is faster than Xoshiro256++ in Python, competitive with Philox in C,
-and lighter than ChaCha. It provides a clean ARX structure with stronger
-diffusion than simple LCGs or xoroshiro-type generators.
-
-#### 2. Empirical Validation
-The underlying RGE256 core (Lite variant) has been independently validated:
-
-- TestU01 SmallCrush  
-- TestU01 Crush  
-- TestU01 BigCrush  
-- PractRand ≥ **1 TiB**  
-- Full SmokeRand express/brief/default/full
-- **Dieharder 114/114 via streaming** (zero failures)
-
-This level of external validation is rare for new RNG proposals.
-
-#### 3. Academic Attribution
-The generator has:
-
-- A DOI  
-- A public preprint  
-- Documented design rationale  
-- Benchmark results  
-- Full transparency and AI-assistance disclosure  
-
-#### 4. Direct Benefit to PyTorch Users
-RGE256ctr is well-suited for:
-
-- Monte Carlo simulation  
-- training reproducibility  
-- diffusion models  
-- data augmentation  
-- tensor initialization  
-- high-parallel GPU workloads  
-
-#### 5. Simple Integration Path
-RGE256ctr:
-
-- is counter-based  
-- is fully deterministic  
-- has serializable fixed-size state  
-- uses a portable C reference design  
-- matches PyTorch's RNG abstraction layer  
-
-This greatly simplifies upstream integration.
-
-### PyTorch Compatibility Summary
-
-RGE256ctr is compatible with PyTorch's RNG architecture and can be mapped cleanly
-to the `GeneratorImpl` backend for both CPU and CUDA. The generator satisfies all
-requirements for determinism, reproducibility, state serialization, and
-parallel counter-mode execution.
-
-#### Key Compatibility Properties
-
-- **Counter-Mode Design**  
-  RGE256ctr uses a 64-bit counter with a fixed 256-bit key. This matches PyTorch's
-  preferred architecture (Philox, ChaCha).
-
-- **Stateless Advancing**  
-  Output is a deterministic function of `(key, counter)`, allowing per-thread
-  and per-block parallelization with no synchronization.
-
-- **Serializable State**  
-  The internal state is only 320 bits (256-bit key + 64-bit counter), which fits
-  easily into PyTorch's RNG state tensor.
-
-- **Parallel Execution**  
-  Counter ranges can be distributed across CPU threads or CUDA blocks, mirroring
-  Philox's design.
-
-- **Deterministic Cross-Platform Behavior**  
-  The C reference implementation ensures bit-identical output on all platforms.
-
-#### Why PyTorch Can Integrate RGE256ctr Easily
-
-PyTorch already ships with two counter-mode ARX RNGs (Philox, ChaCha).  
-RGE256ctr follows the same architectural pattern:
-
-```
-new_state = ARX_rounds(key, counter)
-output    = new_state[0]
-counter  += 1
-```
-
-This means:
-
-- No new abstraction layers
-- No redesign of RNG plumbing
-- Uses existing `GeneratorImpl` interfaces
-- Compatible with PyTorch's state management
-- Clear path to CUDA kernels
-
-RGE256ctr drops directly into the existing RNG backend with minimal changes.
-
----
-
-## 10. License
+## 9. License
 
 This project is released under the **MIT License**.  
 All code is available for academic and industrial use.
 
 ---
 
-## 11. Citation
+## 10. Citation
 
 If you use this work, please cite:
 
 **Reid, S. (2025). RGE-256: ARX-Based Pseudorandom Number Generator With Structured Entropy and Empirical Validation. Zenodo.**  
-DOI: https://doi.org/10.5281/zenodo.17713219
+DOI: [https://doi.org/10.5281/zenodo.17713219](https://zenodo.org/records/17861488) 
+
 
 ---
 
-## 12. Credits
+## 11. Credits
 
 **Primary author:** Steven Reid  
 Independent Researcher  
 ORCID: 0009-0003-9132-3410
+
+---
+
+### Algorithm Attribution
+
+#### RGE256ex, RGE512ex, RGE256ctr
+
+The following algorithms are modifications/extensions of the original RGE256 design:
+
+**RGE256ex** and **RGE512ex** are improved modifications of the RGE256 nonlinear generator. The author of these modifications is **Alexey L. Voskov**:
+
+- A linear part with 64-bit counter was added (so the minimal period is at least 2⁶⁴)
+- Extra rotations were added to the ARX nonlinear transformation that allowed reducing the number of rounds and eliminating the need for an output function
+
+**RGE256ctr** counter-mode architecture and its C reference implementation were developed by **Alexey L. Voskov** for test-safe PRNG construction compatible with SmokeRand, TestU01, and PractRand streaming harnesses.
+
+These contributions addressed key limitations in the original RGE256Lite design (output efficiency, period guarantees) and enabled compatibility with streaming test harnesses.
+
+**References:**
+
+1. Reid, S. (2025). RGE-256: A New ARX-Based Pseudorandom Number Generator With Structured Entropy and Empirical Validation. Zenodo. https://doi.org/10.5281/zenodo.17713219
+
+2. Voskov, A. L. (2025). SmokeRand: A Set of Tests for Pseudorandom Number Generators. GitHub. https://github.com/alvoskov/SmokeRand
+
+**Copyright:**
+
+The original RGE256 algorithm was created by Steven Reid.
+
+Reengineering to RGE256ex, RGE512ex, RGE256ctr and reentrant C versions for SmokeRand:
+
+(c) 2025 Alexey L. Voskov, Lomonosov Moscow State University.  
+alvoskov@gmail.com
 
 ---
 
@@ -426,25 +353,13 @@ Statistical testing was performed using the [SmokeRand](https://github.com/alvos
 
 ---
 
-### Algorithm Attribution
-
-The following algorithms were designed by **Alexey L. Voskov** and are included in this repository with attribution:
-
-- **RGE512ex**: 512-bit counter-based ARX generator (algorithm design)
-- **RGE256ctr**: Counter-mode ARX generator inspired by reduced-round ChaCha (algorithm design)
-- **RGE256ctr_C**: C99 reference implementation
-
-These contributions addressed key limitations in the original RGE256Lite design (output efficiency, period guarantees) and enabled compatibility with streaming test harnesses.
-
----
-
 ### Independent Validation
 
-Alexey L. Voskov independently validated the RGE256 family using:
+Alexey L. Voskov independently validated the RGE256lite using:
 
-- **TestU01**: BigCrush (full pass)
+- **TestU01**: SmallCrush, Crush, and BigCrush (full pass)
 - **PractRand**: ≥1 TiB (no failures)
-- **SmokeRand**: Express, default, and full batteries (Quality 4.0)
+- **SmokeRand**: Express, brief, default, and full batteries (Quality 4.0)
 - **Dieharder**: Streaming validation (zero failures across all variants)
 
 His analysis of rotation constants and seed weaknesses directly informed the development of RGE256LiteSafe and the counter-mode variants.
@@ -453,13 +368,13 @@ His analysis of rotation constants and seed weaknesses directly informed the dev
 
 ### Summary
 
-All generators in this repository are original implementations by Steven Reid, except where explicitly attributed to Voskov above. No code from SmokeRand is included; only high-level design insights from Voskov's review informed the newer variants.
+All generators in this repository are original implementations by Steven Reid, except where explicitly attributed to Voskov above. The RGE256ex, RGE512ex, and RGE256ctr algorithm designs are due to Alexey L. Voskov based on the original RGE256 concept. No code from SmokeRand is included in this repository.
 
 ---
 
 ### Attribution Notice
 
-This project is maintained in good faith with the intent to properly credit all contributors. If any reference, acknowledgement, or attribution is missing or incomplete, this is an unintentional oversight on my part, not an attempt to claim credit for others' work. If you believe your contribution has not been properly acknowledged, please open an issue or contact me directly, and I will promptly update this section.
+This project is maintained in good faith with the intent to properly credit all contributors. If any reference, acknowledgement, or attribution is missing or incomplete, this is an unintentional oversight on my part, not an attempt to claim credit for others' work. If you believe any contribution has not been properly acknowledged, please open an issue or contact me directly, and I will promptly update this section.
 
 ---
 
