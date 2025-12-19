@@ -343,7 +343,6 @@ The original RGE256 algorithm was created by Steven Reid.
 Reengineering to RGE256ex, RGE512ex, RGE256ctr and reentrant C versions for SmokeRand:
 
 (c) 2025 Alexey L. Voskov, Lomonosov Moscow State University.  
-alvoskov@gmail.com
 
 ---
 
