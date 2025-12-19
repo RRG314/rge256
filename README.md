@@ -25,7 +25,7 @@ All Python variants depend only on NumPy. The counter-mode C implementation incl
 
 ---
 
-## 1. Variants Overview
+## 1. Core Overview
 
 ### **RGE256Lite**
 Original 256-bit ARX core using three rounds of updates and simple cross-lane diffusion.  
