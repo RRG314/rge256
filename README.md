@@ -20,6 +20,7 @@ The repository contains the following implementations:
 - **RGE512ex**  
 - **RGE256ctr**   
 - **C-accelerated RGE256ctr** 
+- **RGE256-DRBG** (deterministic random bit generator)
 
 All Python variants depend only on NumPy. The counter-mode C implementation includes a Python wrapper for high-throughput generation.
 
@@ -55,6 +56,13 @@ Uses six ARX rounds, a 64-bit counter, and feedforward output.
 Easy to parallelize and suitable for tensor and array generation.  
 This is the **recommended default generator**.  
 **Counter-mode architecture by Alexey L. Voskov**.
+
+### **RGE256-DRBG**
+Deterministic random bit generator (DRBG) implementation written in C99.  
+Uses a ChaCha20 ARX core (20 rounds) as its internal mixing primitive.  
+Designed for statistical testing, benchmarking, reproducible experiments, and future cryptographic hardening.  
+Exposes both a library interface and a Linux CLI for integration with standard randomness test suites.  
+**Not yet positioned as a standards-compliant cryptographic DRBG.**
 
 ---
 
@@ -186,7 +194,7 @@ Alexey L. Voskov provided critical contributions to this project:
 
 His feedback directly influenced the improved counter-based and extended-state variants now included in this repository.
 
-Full credit is provided in the [Credits](#12-credits) section.
+Full credit is provided in the [Credits](#13-credits) section.
 
 All generators in this repository are original implementations by Steven Reid,
 except where explicitly attributed to Voskov (RGE512ex, RGE256ctr C reference).
@@ -242,7 +250,166 @@ GeneratorImpl backend.
 
 ---
 
-## 7. Python Usage
+## 7. RGE256-DRBG
+
+RGE256-DRBG is a deterministic random bit generator (DRBG) implementation written in C99. It uses a ChaCha20 ARX core (20 rounds) as its internal mixing primitive and is designed for statistical testing, benchmarking, reproducible experiments, and future cryptographic hardening.
+
+**This generator is not yet positioned as a standards-compliant cryptographic DRBG.**
+
+### Status
+
+- ✅ Compiles cleanly on Linux (C99)
+- ✅ Deterministic, reproducible output
+- ✅ Known Answer Test (KAT) implemented and passing
+- ✅ Passes full Dieharder battery (with expected rare WEAK results)
+- ✅ High throughput on low-end hardware (~120–140 MiB/s)
+- ⚠️ Not yet positioned as a standards-compliant cryptographic DRBG
+
+### DRBG Files
+
+| File | Description |
+|------|-------------|
+| `rge256_drbg.h` | Public API and state definition |
+| `rge256_drbg.c` | ChaCha20 core + DRBG logic (buffered generation, rekey hooks) |
+| `rge256_drbg_cli.c` | Linux command-line tool for streaming output to stdout |
+| `librge256drbg.so` | Linux x86-64 shared library (built locally) |
+
+**Note:** Prebuilt `.so` files are platform-specific and should be distributed as GitHub release assets, not relied on for cross-platform builds.
+
+### Build DRBG (Linux)
+
+Build CLI:
+
+```bash
+cc -O3 -std=c99 -Wall -Wextra -Wshadow -Wconversion -Wpedantic \
+  rge256_drbg.c rge256_drbg_cli.c -o rge256_drbg
+```
+
+Build Shared Library:
+
+```bash
+gcc -O3 -std=c99 -fPIC -shared -o librge256drbg.so rge256_drbg.c
+```
+
+### DRBG Usage
+
+Unlimited stream (for test suites):
+
+```bash
+./rge256_drbg > out.bin
+```
+
+Fixed output size:
+
+```bash
+./rge256_drbg --bytes 1073741824 > /dev/null
+```
+
+Stream separation:
+
+```bash
+./rge256_drbg --bytes 64 --stream-id 1 | sha256sum
+./rge256_drbg --bytes 64 --stream-id 2 | sha256sum
+```
+
+Observed output:
+
+```
+58131ef92c721ac375ee51d042d7129368ef7eace8237acc31647092f474ca21
+69ea2cda7804c07e8d7b4b242b1e44b68dfa081633a684f1a5e4227c1506c38e
+```
+
+Known Answer Test (KAT):
+
+```bash
+./rge256_drbg --kat
+```
+
+Result:
+
+```
+RGE256-DRBG KAT: PASS
+```
+
+### DRBG Dieharder Results
+
+Command:
+
+```bash
+./rge256_drbg | dieharder -a -g 200
+```
+
+Summary:
+
+- All major Diehard tests **PASSED**
+- A small number of WEAK p-values occurred (expected behavior in large batteries)
+- No systematic failures observed
+- Observed throughput: ~1.26×10⁷ rands/sec
+
+### DRBG Throughput Benchmarks
+
+**Test hardware:**
+
+```
+Intel Celeron N4020 @ 1.10GHz (2 cores)
+Linux
+```
+
+Streaming throughput:
+
+```bash
+./rge256_drbg | pv -rab >/dev/null
+```
+
+Observed: **~120–140 MiB/s**
+
+Fixed 1 GiB output:
+
+```bash
+time ./rge256_drbg --bytes 1073741824 > /dev/null
+```
+
+Observed:
+
+```
+real    ~6.4s
+user    ~6.3s
+sys     ~0.07s
+```
+
+### DRBG Design Notes
+
+The generator uses:
+
+- **ChaCha20 ARX core** (20 rounds) for internal mixing
+- **256-bit key** + **96-bit nonce** seed material
+- **Buffered generation** with rekey hooks
+- **Stream separation** via nonce derivation (`--stream-id`)
+
+Suitable for statistical testing, numerical simulation, Monte Carlo workloads, reproducible experiments, and DRBG design exploration.
+
+### Not Yet Claimed
+
+The following are **not yet claimed** for the DRBG implementation:
+
+- NIST SP 800-90A compliance
+- Formal cryptographic security proofs
+- Side-channel resistance guarantees
+
+### Roadmap Toward Cryptographic DRBG
+
+Planned or required for crypto-grade positioning:
+
+- [ ] Explicit threat model
+- [ ] Defined reseed and rekey policy
+- [ ] Backtracking resistance documentation
+- [ ] Additional test batteries (PractRand, TestU01)
+- [ ] Expanded KAT vectors
+- [ ] Clear misuse guidance
+
+---
+
+## 8. Python Usage
 
 ```python
 from rge256.rge256_ctr import RGE256ctr
@@ -262,13 +429,18 @@ print(g.next32())
 
 ---
 
-## 8. Project Structure
+## 9. Project Structure
 
 ```
 c/
     Makefile
     rge256ctr.c
     rge256ctr.h
+drbg/
+    rge256_drbg.h
+    rge256_drbg.c
+    rge256_drbg_cli.c
+    librge256drbg.so
 rge256/
     __init__.py
     librge256ctr.so
@@ -290,14 +462,14 @@ LICENSE
 
 ---
 
-## 9. License
+## 10. License
 
 This project is released under the **MIT License**.  
 All code is available for academic and industrial use.
 
 ---
 
-## 10. Citation
+## 11. Citation
 
 If you use this work, please cite:
 
@@ -307,7 +479,7 @@ DOI: [https://doi.org/10.5281/zenodo.17713219](https://zenodo.org/records/178614
 
 ---
 
-## 11. Credits
+## 12. Credits
 
 **Primary author:** Steven Reid  
 Independent Researcher  
