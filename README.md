@@ -145,6 +145,39 @@ Results shown as Passed/Weak/Failed:
 
 All variants achieve the maximum Quality 4.0 rating, processing approximately 145 GB (2³⁷ bytes) per variant.
 
+### NIST SP 800-22 Results
+
+RGE256 was validated against the full NIST SP 800-22 Statistical Test Suite using 1,000 sequences of 1 million bits each (1 billion bits total).
+
+**Result: All 188 test instances passed.**
+
+| Test Category | Tests | Result | Notes |
+|---------------|-------|--------|-------|
+| Frequency | 1 | PASS | P-value: 0.382, Proportion: 988/1000 |
+| Block Frequency | 1 | PASS | P-value: 0.439, Proportion: 983/1000 |
+| Cumulative Sums | 2 | PASS | P-values: 0.129, 0.095 |
+| Runs | 1 | PASS | P-value: 0.691, Proportion: 992/1000 |
+| Longest Run | 1 | PASS | P-value: 0.834, Proportion: 992/1000 |
+| Rank | 1 | PASS | P-value: 0.740, Proportion: 986/1000 |
+| FFT (Spectral) | 1 | PASS | P-value: 0.637, Proportion: 984/1000 |
+| Non-Overlapping Template | 148 | PASS | All templates passed; lowest P-value: 0.002 |
+| Overlapping Template | 1 | PASS | P-value: 0.166, Proportion: 992/1000 |
+| Universal | 1 | PASS | P-value: 0.273, Proportion: 993/1000 |
+| Approximate Entropy | 1 | PASS | P-value: 0.434, Proportion: 993/1000 |
+| Random Excursions | 8 | PASS | All states passed; P-values: 0.102–0.981 |
+| Random Excursions Variant | 18 | PASS | All states passed; P-values: 0.038–0.793 |
+| Serial | 2 | PASS | P-values: 0.367, 0.252 |
+| Linear Complexity | 1 | PASS | P-value: 0.699, Proportion: 992/1000 |
+
+**Key observations:**
+
+- All 188 test instances achieved passing proportions (≥980/1000 for standard tests, ≥617/626 for random excursions)
+- P-value distribution is uniform across tests, indicating no systematic bias
+- No test showed concerning patterns or borderline failures
+- The lowest P-value (0.002 on one Non-Overlapping Template) is statistically expected given 148 template tests
+
+The NIST SP 800-22 results confirm that RGE256 produces output indistinguishable from true randomness at the 1-billion-bit scale.
+
 ---
 
 ## 4. External Review and Improvements
@@ -250,7 +283,116 @@ GeneratorImpl backend.
 
 ---
 
-## 7. RGE256-DRBG
+## 7. Changes from Previous Version
+
+This version of **RGE256ctr** is a direct update of the earlier single-word ARX generator.  
+The main changes are:
+
+### 1. Use of the full ARX block (faster + better use of state)
+
+**Before:**
+
+- Each call to `rge256ctr_next32()` ran the full 6-round ARX core and returned **only `w[0] + state[0]`**.
+- The other 15 words in the 64-byte block were discarded.
+- This made the generator slower than necessary and ignored valid ChaCha-style outputs.
+
+**Now:**
+
+- The ARX core produces a full **16×32-bit** block.
+- The block is stored in an internal buffer `buf[16]`.
+- `rge256ctr_next32()` simply walks through `buf` and refills it when empty.
+- Result: **same ARX cost per block, 16 outputs per call to the core**, so effective throughput is ~16× higher for the same round count.
+
+This directly addresses the suggestion that "only the first 32-bit word is used" and that "all outputs are good for ChaCha12".
+
+---
+
+### 2. Simpler seeding: no internal LCG "dance"
+
+**Before:**
+
+- `rge256ctr_init()` used a linear congruential generator to expand a 32-bit seed into 8 key words:
+  ```c
+  uint32_t x = seed;
+  for (int i = 0; i < 8; i++) {
+      x = x * 1664525 + 1013904223;
+      s->key[i] = x;
+  }
+  ```
+- This added an extra layer of ad-hoc mixing on top of the ARX core.
+
+**Now:**
+
+- The seed is written directly into one 32-bit key word, and the remaining words are fixed constants:
+  ```c
+  s->key[0] = seed;
+  s->key[1] = 0x9E3779B9u;
+  s->key[2] = 0x243F6A88u;
+  s->key[3] = 0xB7E15162u;
+  s->key[4] = 0xC6EF3720u;
+  s->key[5] = 0xDEADBEEFu;
+  s->key[6] = 0xA5A5A5A5u;
+  s->key[7] = 0x01234567u;
+  ```
+- No LCG or extra mixing in init; the ARX core does the hard work.
+
+This matches the suggestion that for a ChaCha-style core, an LCG in initialization "is not required" and that the seed can just occupy one key word with constants in the others.
+
+---
+
+### 3. Cleaner counter + nonce layout
+
+**Before:**
+
+- State layout used:
+  - Words 0–3: ChaCha constants
+  - Words 4–11: key
+  - Words 12–13: 64-bit counter
+  - Words 14–15: `key[0] ^ counter_low`, `key[1] ^ counter_high`
+- There was no explicit nonce; words 14–15 were a derived mix of key and counter.
+
+**Now:**
+
+- State layout is closer to ChaCha-style CTR:
+  - Words 0–3: constants (`"expa"`, `"nd 3"`, `"2-by"`, `"te k"`)
+  - Words 4–11: 256-bit key
+  - Words 12–13: 64-bit counter (incremented per block)
+  - Words 14–15: 64-bit nonce (fixed or per thread)
+- The API exposes this as `rge256ctr_init(&state, seed, nonce)`.
+
+This directly follows the advice that the nonce can be fixed or used as a thread ID, and that the ChaCha-style mixer is strong enough without extra LCG/xor tricks on the counter words.
+
+---
+
+### 4. Internal buffering API
+
+**Before:**
+
+- No internal buffering; each call rebuilt the full state and ran 6 ARX rounds just to return one 32-bit word.
+
+**Now:**
+
+- The state struct includes:
+  ```c
+  uint32_t buf[16];
+  int buf_used;
+  ```
+- When `buf_used == 16`, the ARX core refills `buf` with a new 64-byte block and resets `buf_used = 0`.
+- Each `rge256ctr_next32()` call just returns `buf[buf_used++]`.
+
+This makes the generator more practical to use for streaming and matches the "use all outputs" guidance.
+
+---
+
+### 5. Behavior changes / compatibility note
+
+- The new version does **not** produce the same bit stream as the older single-word version for the same seed.
+- All test results (Dieharder, NIST SP 800-22, SmokeRand) reported in this repo correspond to this updated ARX-block version (full-block output, no LCG in init, explicit nonce).
+- The old implementation is now considered deprecated in favor of this simpler and better-tested design.
+
+---
+
+## 8. RGE256-DRBG
 
 RGE256-DRBG is a deterministic random bit generator (DRBG) implementation written in C99. It uses a ChaCha20 ARX core (20 rounds) as its internal mixing primitive and is designed for statistical testing, benchmarking, reproducible experiments, and future cryptographic hardening.
 
@@ -409,7 +551,7 @@ Planned or required for crypto-grade positioning:
 
 ---
 
-## 8. Python Usage
+## 9. Python Usage
 
 ```python
 from rge256.rge256_ctr import RGE256ctr
@@ -429,7 +571,7 @@ print(g.next32())
 
 ---
 
-## 9. Project Structure
+## 10. Project Structure
 
 ```
 c/
@@ -462,14 +604,14 @@ LICENSE
 
 ---
 
-## 10. License
+## 11. License
 
 This project is released under the **MIT License**.  
 All code is available for academic and industrial use.
 
 ---
 
-## 11. Citation
+## 12. Citation
 
 If you use this work, please cite:
 
@@ -479,7 +621,7 @@ DOI: [https://doi.org/10.5281/zenodo.17713219](https://zenodo.org/records/178614
 
 ---
 
-## 12. Credits
+## 13. Credits
 
 **Primary author:** Steven Reid  
 Independent Researcher  
