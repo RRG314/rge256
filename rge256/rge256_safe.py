@@ -15,6 +15,10 @@ class RGE256Safe:
         self.rounds = 3
         self.counter = np.uint64(0)
 
+    @property
+    def state(self):
+        return np.concatenate([self.s, np.array([np.uint32(self.counter & 0xFFFFFFFF), np.uint32((self.counter >> 32) & 0xFFFFFFFF)], dtype=np.uint32)])
+
     def next32(self):
         s = self.s
 

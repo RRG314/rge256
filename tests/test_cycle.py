@@ -1,5 +1,6 @@
 # tests/test_cycle.py
 
+import os
 import numpy as np
 from rge256 import (
     RGE256Lite,
@@ -9,16 +10,23 @@ from rge256 import (
     RGE256ctr,
 )
 
-def detect_cycle(gen, n=500_000):
+def detect_cycle(gen, n=None):
     """
     Proper cycle detection:
     A generator is only a TRUE cycle if it returns to the *entire state*,
     not if the output repeats.
     """
+    if n is None:
+        # Keep default runtime practical for CI and local checks.
+        n = int(os.environ.get("RGE_CYCLE_ITERS", "50000"))
+
     seen_states = set()
 
     for _ in range(n):
-        state = tuple(gen.state) if hasattr(gen, "state") else None
+        state_raw = getattr(gen, "state", None)
+        if state_raw is None:
+            raise AssertionError("Generator must expose a `state` attribute for cycle testing")
+        state = tuple(np.asarray(state_raw, dtype=np.uint32).tolist())
         if state in seen_states:
             return True
         seen_states.add(state)

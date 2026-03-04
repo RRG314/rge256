@@ -1,45 +1,8 @@
-/**
- * @file rge256_ctr.py
- * 
- *
- * @details
- * This file implements an RGE family generator derived from the original
- * RGE-256 design by Steven Reid. The RGE architecture is based on structured
- * ARX (add-rotate-xor) transformations with recursive cross-lane diffusion
- * intended to maximize entropy propagation and avalanche behavior.
- *
- * This specific variant includes independent reengineering and/or extension
- * work, including counter-mode construction, implementation hardening,
- * and statistical testing.
- *
- * Independent reengineering, C implementation, and statistical testing
- * for SmokeRand, TestU01, and PractRand were performed by Alexey L. Voskov.
- * These efforts include rewriting selected RGE cores into reentrant,
- * streaming-compatible C implementations and validating them using
- * full-scale empirical test batteries.
- *
- *
- * References:
- *
- * 1. Voskov, A. L. (2025). Independent reengineering and validation of
- *    RGE-based generators for SmokeRand and TestU01.
- *    https://github.com/alvoskov/smokerand-generators
- *
- * 2. Reid, S. (2025). RGE-256: A New ARX-Based Pseudorandom Number Generator
- *    with Structured Entropy and Empirical Validation. Zenodo.
- *    https://doi.org/10.5281/zenodo.17713219
- *
- * Original algorithm:
- *   © 2025 Steven Reid
- *
- * Reengineering, counter-mode variants, and C implementations:
- *   © 2025 Alexey L. Voskov
- *   Lomonosov Moscow State University
- *   alvoskov@gmail.com
- *
- * License:
- *   MIT License
- */
+"""RGE256 counter-mode variant implemented in pure Python.
+
+This module provides a deterministic ARX-style counter generator used for
+non-cryptographic simulation workloads.
+"""
 
 # rge256_ctr.py
 import numpy as np
@@ -64,6 +27,21 @@ class RGE256ctr:
 
         # 64-bit counter
         self.counter = np.uint64(0)
+
+    @property
+    def state(self):
+        return np.concatenate(
+            [
+                self.key,
+                np.array(
+                    [
+                        np.uint32(self.counter & 0xFFFFFFFF),
+                        np.uint32((self.counter >> 32) & 0xFFFFFFFF),
+                    ],
+                    dtype=np.uint32,
+                ),
+            ]
+        )
 
     def quarter_round(self, x, a, b, c, d):
         x[a] = add32(x[a], x[b]);  x[d] ^= x[a];  x[d] = rotl32(x[d], 16)

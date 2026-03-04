@@ -18,6 +18,10 @@ class RGE256Lite:
         for _ in range(10):
             self.next32()
 
+    @property
+    def state(self):
+        return self.s
+
     def next32(self):
         s = self.s
 

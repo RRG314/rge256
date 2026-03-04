@@ -13,6 +13,10 @@ class RGE256ex:
         self.s = np.random.randint(0, 2**32, size=8, dtype=np.uint32)
         self.rounds = 2
 
+    @property
+    def state(self):
+        return self.s
+
     def next32(self):
         s = self.s
 
